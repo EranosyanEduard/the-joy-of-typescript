@@ -1,0 +1,5 @@
+{
+	"extension": "ts",
+	"spec": "src/**/*.spec.ts",
+	"require": ["tsconfig-paths/register", "ts-node/esm"]
+}
