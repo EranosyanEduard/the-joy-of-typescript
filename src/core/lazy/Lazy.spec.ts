@@ -2,6 +2,8 @@ import { assert } from 'chai'
 import Lazy from './Lazy'
 
 describe('Тест класса Lazy', () => {
+    const doNothing = (arg: any): void => {}
+
     it('Тест конструктора', () => {
         assert.instanceOf(new Lazy(() => ''), Lazy)
     })
@@ -18,17 +20,17 @@ describe('Тест класса Lazy', () => {
             assert.equal(num, 0)
         })
         it('Значение вычисляется при вызове метода value', () => {
-            lazy.value()
+            doNothing(lazy.value)
             assert.equal(num, 1)
         })
         it('Значение вычисляется при вызове метода value однажды', () => {
-            lazy.value()
-            lazy.value()
+            doNothing(lazy.value)
+            doNothing(lazy.value)
             assert.equal(num, 1)
         })
         it('Метод value возвращает актуальное значение', () => {
-            lazy.value()
-            assert.equal(lazy.value(), 1)
+            doNothing(lazy.value)
+            assert.equal(lazy.value, 1)
         })
     })
     describe('Тест метода flatMap', () => {
@@ -51,7 +53,7 @@ describe('Тест класса Lazy', () => {
             assert.equal(b, '')
         })
         it('Значение экземпляра lazyB вычисляется на основе ф-ии, переданной на вход методу flatMap', () => {
-            assert.equal(lazyB.value(), '1')
+            assert.equal(lazyB.value, '1')
         })
     })
     describe('Тест метода map', () => {
@@ -74,7 +76,7 @@ describe('Тест класса Lazy', () => {
             assert.equal(b, '')
         })
         it('Значение экземпляра lazyB вычисляется на основе ф-ии, переданной на вход методу map', () => {
-            assert.equal(lazyB.value(), '1')
+            assert.equal(lazyB.value, '1')
         })
     })
 })
