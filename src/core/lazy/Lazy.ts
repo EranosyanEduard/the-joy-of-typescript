@@ -27,9 +27,7 @@ class Lazy<T> implements CustomType<T> {
     private [LAZY]!: void
 }
 
-const factory = <T>(value: T): Factory<T> => {
-    return () => value
-}
+const lazy = <T>(f: Factory<T>): Lazy<T> => new Lazy(f)
 
 export default Lazy
-export { factory }
+export { lazy }
