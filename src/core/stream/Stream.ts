@@ -41,8 +41,76 @@ abstract class Stream<T> {
         )
     }
 
+    /**
+     * Добавить поток элементов **stream** в конец текущего потока.
+     * @param stream - Поток элементов.
+     */
+    append(stream: Stream<T>): Stream<T> {
+        return this.foldRight(
+            lazy(() => stream),
+            (head) => (acc) =>
+                Stream.cons(
+                    lazy(() => head),
+                    acc
+                )
+        )
+    }
+
+    filter(p: Predicate<T>): Stream<T> {
+        return this.foldRight(
+            lazy(() => Stream.empty()),
+            (head) => (acc) =>
+                p(head)
+                    ? Stream.cons(
+                          lazy(() => head),
+                          acc
+                      )
+                    : acc.value
+        )
+    }
+
+    find(p: Predicate<T>): Nullable<T> {
+        return this.filter(p).head
+    }
+
+    flatMap<U>(f: (head: T) => Stream<U>): Stream<U> {
+        return this.foldRight(
+            lazy(() => Stream.empty()),
+            (head) => (acc) => f(head).append(acc.value)
+        )
+    }
+
     isNotEmpty(): this is Stream.Cons<T> {
         return !this.isEmpty
+    }
+
+    /**
+     * Взять из потока первые n-элементов, для которых предикат **p** вернул
+     * значение true.
+     * @param p - Функция-предикат.
+     */
+    takeWhileViaFoldRight(p: Predicate<T>): Stream<T> {
+        return this.foldRight(
+            lazy(() => Stream.empty()),
+            (head) => (acc) =>
+                p(head)
+                    ? Stream.cons(
+                          lazy(() => head),
+                          acc
+                      )
+                    : Stream.empty()
+        )
+    }
+
+    map<U>(f: (head: T) => U): Stream<U> {
+        return this.foldRight(
+            lazy(() => Stream.empty()),
+            (head) => (acc) =>
+                Stream.cons(
+                    lazy(() => f(head)),
+                    acc
+                )
+        )
     }
 
     toList(): List<T> {
@@ -74,6 +142,14 @@ abstract class Stream<T> {
     abstract exists(p: Predicate<T>): boolean
 
     /**
+     * Свернуть поток "справа".
+     * @param identity - Начальное значение.
+     * @param f - Функция для "объединения" текущего значения **головы** и
+     * **аккумулятора**.
+     */
+    abstract foldRight<U>(identity: Lazy<U>, f: (head: T) => (acc: Lazy<U>) => U): U
+
+    /**
      * Взять из потока количество элементов, равное аргументу **num**.
      * @param num - Количество элементов.
      */
@@ -98,6 +174,16 @@ namespace Stream {
 
     const exists = <T>(stream: Stream<T>, p: Predicate<T>): boolean => {
         return stream.isNotEmpty() ? p(stream.head) || exists(stream.tail, p) : false
+    }
+
+    const foldRight = <T, U>(
+        stream: Stream<T>,
+        acc: Lazy<U>,
+        f: (head: T) => (acc: Lazy<U>) => U
+    ): U => {
+        return stream.isNotEmpty()
+            ? f(stream.head)(lazy(() => foldRight(stream.tail, acc, f)))
+            : acc.value
     }
 
     export const toList = <T>(stream: Stream<T>, list: List<T>): List<T> => {
@@ -136,6 +222,10 @@ namespace Stream {
 
         exists(p: Predicate<T>): boolean {
             return exists(this, p)
+        }
+
+        foldRight<U>(identity: Lazy<U>, f: (head: T) => (acc: Lazy<U>) => U): U {
+            return foldRight(this, identity, f)
         }
 
         takeAtMost(num: number): Stream<T> {
@@ -180,6 +270,10 @@ namespace Stream {
 
         exists(p: Predicate<never>): boolean {
             return exists(this, p)
+        }
+
+        foldRight<U>(identity: Lazy<U>, f: (head: never) => (acc: Lazy<U>) => U): U {
+            return identity.value
         }
 
         takeAtMost(num: number): Stream<never> {

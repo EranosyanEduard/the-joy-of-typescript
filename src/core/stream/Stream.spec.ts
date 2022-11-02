@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import { lazy } from '../lazy/Lazy'
+import Lazy, { lazy } from '../lazy/Lazy'
 import List from '../list/List'
 import Stream from './Stream'
 
@@ -16,6 +16,8 @@ describe('Тест класса Stream', () => {
     const range = (length: number, start = 0): number[] => {
         return Array.from({ length }, (_, idx) => idx + start)
     }
+
+    const isEven: Predicate<number> = (n) => n % 2 === 0
 
     const isLowerThan =
         (max: number) =>
@@ -206,6 +208,141 @@ describe('Тест класса Stream', () => {
                     .dropAtMost(1000)
                     .takeAtMost(1000)
                     .exists((n) => n === 1500)
+            )
+        })
+    })
+
+    describe('Тест метода - foldRight', () => {
+        const f = (head: string) => (acc: Lazy<string>) => `${acc.value}${head}`
+
+        it('Экземпляр - пустой поток', () => {
+            assert.equal(
+                Stream.empty<string>().foldRight(
+                    lazy(() => ''),
+                    f
+                ),
+                ''
+            )
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                Stream.iterate('a', (head) => String.fromCharCode(head.charCodeAt(0) + 1))
+                    .takeAtMost(10)
+                    .foldRight(
+                        lazy(() => ''),
+                        f
+                    ),
+                'abcdefghij'.split('').reverse().join('')
+            )
+        })
+    })
+
+    describe('Тест метода - append', () => {
+        const nums = Stream.from(0).takeAtMost(1000)
+
+        it('Экземпляр - пустой поток', () => {
+            assert.equal(Stream.empty<number>().append(nums), nums)
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                nums.append(Stream.from(1000).takeAtMost(1000)).toList().toString(),
+                List.new(...range(2000)).toString()
+            )
+        })
+    })
+
+    describe('Тест метода filter', () => {
+        it('Экземпляр - пустой поток', () => {
+            assert.isTrue(Stream.empty<number>().filter(isEven).isEmpty)
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                Stream.from(0).takeAtMost(1000).filter(isEven).toList().toString(),
+                List.new(...range(1000))
+                    .filter(isEven)
+                    .toString()
+            )
+        })
+    })
+
+    describe('Тест метода find', () => {
+        it('Экземпляр - пустой поток', () => {
+            assert.isNull(Stream.empty<number>().find(isEven))
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                Stream.from(-500)
+                    .takeAtMost(1000)
+                    .find((n) => isEven(n) && n > 0),
+                2
+            )
+        })
+    })
+
+    describe('Тест метода flatMap', () => {
+        const toStream = (head: number): Stream<number> => Stream.from(head * 10).takeAtMost(10)
+
+        it('Экземпляр - пустой поток', () => {
+            assert.isTrue(Stream.empty<number>().flatMap(toStream).isEmpty)
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                Stream.from(0).takeAtMost(10).flatMap(toStream).toList().toString(),
+                List.new(...range(100)).toString()
+            )
+        })
+    })
+
+    describe('Тест метода map', () => {
+        const toStr = (head: number): string => head.toString()
+
+        it('Экземпляр - пустой поток', () => {
+            assert.isTrue(Stream.empty<number>().map(toStr).isEmpty)
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                Stream.from(0).takeAtMost(1000).map(toStr).toList().toString(),
+                List.new(...range(1000))
+                    .map(toStr)
+                    .toString()
+            )
+        })
+    })
+
+    describe('Тест метода takeWhileViaFoldRight', () => {
+        it('Экземпляр - пустой поток', () => {
+            assert.isTrue(Stream.empty<number>().takeWhileViaFoldRight(isLowerThan(1000)).isEmpty)
+        })
+        it('Экземпляр - поток элементов', () => {
+            assert.equal(
+                Stream.from(0).takeWhileViaFoldRight(isLowerThan(1000)).toList().toString(),
+                List.new(...range(1000)).toString()
+            )
+        })
+    })
+
+    describe('Обход потока выполняется 1 раз', () => {
+        const funNames: Array<'filter' | 'map'> = []
+        const stream = Stream.from(0)
+            .takeAtMost(5)
+            .map((n) => {
+                funNames.push('map')
+                return n ** 2
+            })
+            .filter((n) => {
+                funNames.push('filter')
+                return isEven(n)
+            })
+
+        it('Элементы потока', () => {
+            assert.equal(stream.toList().toString(), List.new(0, 4, 16).toString())
+        })
+        it('Порядок вызова методов: map -> filter -> map -> filter -> и т.д.', () => {
+            assert.equal(
+                funNames.join(),
+                range(5)
+                    .flatMap<typeof funNames[number]>(() => ['map', 'filter'])
+                    .join()
             )
         })
     })
