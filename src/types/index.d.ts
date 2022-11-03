@@ -12,8 +12,8 @@ type Nullable<T> = T | null | undefined
 
 /**
  * @description
- * Тип, представляющий пару значений.
+ * Тип, представляющий пару значений в виде кортежа.
  */
-type Pair<A, B = A> = [A, B]
+type PairAsTuple<A, B = A> = [A, B]
 
 type Predicate<V = unknown> = (v: V) => boolean
