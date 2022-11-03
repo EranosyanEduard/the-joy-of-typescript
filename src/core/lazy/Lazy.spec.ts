@@ -1,11 +1,17 @@
 import { assert } from 'chai'
-import Lazy from './Lazy'
+import Lazy, { lazy } from './Lazy'
 
 describe('Тест класса Lazy', () => {
     const doNothing = (arg: any): void => {}
 
     it('Тест конструктора', () => {
         assert.instanceOf(new Lazy(() => ''), Lazy)
+    })
+    it('Тест функции-фабрики', () => {
+        assert.instanceOf(
+            lazy(() => ''),
+            Lazy
+        )
     })
 
     describe('Значение', () => {
