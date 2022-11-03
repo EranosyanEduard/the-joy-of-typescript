@@ -27,8 +27,8 @@ describe('Тест класса Stream', () => {
     describe('Тест конструктора Stream.empty', () => {
         const emptyStream = Stream.empty()
 
-        it('Экземпляр класса Stream.Empty', () => {
-            assert.instanceOf(emptyStream, Stream.Empty)
+        it('Экземпляр класса Stream.Empty - синглтон', () => {
+            assert.equal(emptyStream, Stream.empty())
         })
         it('Свойство head - null', () => {
             assert.isNull(emptyStream.head)
@@ -54,7 +54,7 @@ describe('Тест класса Stream', () => {
             assert.equal(numStream.head, 0)
         })
         it('Свойство tail - экземпляр класса Stream.Empty', () => {
-            assert.instanceOf(numStream.tail, Stream.Empty)
+            assert.equal(numStream.tail, Stream.empty())
         })
         it('Свойство isEmpty - false', () => {
             assert.isFalse(numStream.isEmpty)

@@ -1,5 +1,7 @@
+import { singleton } from 'src/utils/decorators'
 import Lazy, { lazy } from '../lazy/Lazy'
 import List from '../list/List'
+import Pair, { pair } from '../pair/Pair'
 
 abstract class Stream<T> {
     static cons<T>(head: Lazy<T>, tail: Lazy<Stream<T>>): Stream<T> {
@@ -7,14 +9,16 @@ abstract class Stream<T> {
     }
 
     static empty<T>(): Stream<T> {
-        return new Stream.Empty()
+        return Stream.Empty.instance()
     }
 
     /**
      * Создать бесконечный поток чисел Фибоначчи.
      */
     static fibs(): Stream<number> {
-        return Stream.unfold<number, Pair<number>>([1, 1], ([p, n]) => [p, [n, p + n]])
+        return Stream.unfold<number, Pair<number>>(pair(1, 1), (p) =>
+            p.map(([first, second]) => [first, pair(second, first + second)])
+        )
     }
 
     /**
@@ -22,7 +26,7 @@ abstract class Stream<T> {
      * @param start - Начальное значение.
      */
     static from(start: number): Stream<number> {
-        return Stream.unfold(start, (n) => [n, n + 1])
+        return Stream.unfold(start, (n) => pair(n, n + 1))
     }
 
     /**
@@ -55,13 +59,15 @@ abstract class Stream<T> {
      * @param f - Фабрика значений.
      */
     static unfold<T, U>(seed: U, f: (seed: U) => Nullable<Pair<T, U>>): Stream<T> {
-        const pair = f(seed)
-        return pair === null || pair === undefined
-            ? Stream.empty()
-            : Stream.cons(
-                  lazy(() => pair[0]),
-                  lazy(() => Stream.unfold(pair[1], f))
-              )
+        return (
+            f(seed)?.map(([first, second]) => [
+                Stream.cons(
+                    lazy(() => first),
+                    lazy(() => Stream.unfold(second, f))
+                ),
+                null
+            ]).first ?? Stream.empty()
+        )
     }
 
     /**
@@ -257,7 +263,7 @@ namespace Stream {
                       this.#head,
                       lazy(() => this.tail.takeAtMost(num - 1))
                   )
-                : new Empty()
+                : Empty.instance()
         }
 
         takeWhile(p: Predicate<T>): Stream<T> {
@@ -266,11 +272,14 @@ namespace Stream {
                       this.#head,
                       lazy(() => this.tail.takeWhile(p))
                   )
-                : new Empty()
+                : Empty.instance()
         }
     }
 
+    @singleton
     export class Empty extends Stream<never> {
+        static instance: () => Empty
+
         get head(): null {
             return null
         }
