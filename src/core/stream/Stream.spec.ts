@@ -1,9 +1,12 @@
 import { assert } from 'chai'
 import Lazy, { lazy } from '../lazy/Lazy'
 import List from '../list/List'
+import Option from '../option/Option'
 import Stream from './Stream'
 
 describe('Тест класса Stream', () => {
+    const falseFactory: Factory<false> = () => false
+
     /**
      * Создать последовательность элементов типа **number**.
      * @example
@@ -30,11 +33,11 @@ describe('Тест класса Stream', () => {
         it('Экземпляр класса Stream.Empty - синглтон', () => {
             assert.equal(emptyStream, Stream.empty())
         })
-        it('Свойство head - null', () => {
-            assert.isNull(emptyStream.head)
+        it('Свойство head - экземпляр Option.None', () => {
+            assert.equal(emptyStream.head, Option.new())
         })
-        it('Свойство tail - null', () => {
-            assert.isNull(emptyStream.tail)
+        it('Свойство tail - экземпляр Option.None', () => {
+            assert.equal(emptyStream.tail, Option.new())
         })
         it('Свойство isEmpty - true', () => {
             assert.isTrue(emptyStream.isEmpty)
@@ -51,10 +54,10 @@ describe('Тест класса Stream', () => {
             assert.instanceOf(numStream, Stream.Cons)
         })
         it('Свойство head - 0', () => {
-            assert.equal(numStream.head, 0)
+            assert.isTrue(numStream.head.map((h) => h === 0).getOrElse(falseFactory))
         })
         it('Свойство tail - экземпляр класса Stream.Empty', () => {
-            assert.equal(numStream.tail, Stream.empty())
+            assert.isTrue(numStream.tail.map((s) => s === Stream.empty()).getOrElse(falseFactory))
         })
         it('Свойство isEmpty - false', () => {
             assert.isFalse(numStream.isEmpty)
@@ -74,16 +77,30 @@ describe('Тест класса Stream', () => {
         const nums = Stream.from(0)
 
         it('Начальное значение - 0', () => {
-            assert.equal(nums.head, 0)
+            assert.isTrue(nums.head.map((h) => h === 0).getOrElse(falseFactory))
         })
         it('2-е значение - 1', () => {
-            assert.equal(nums.tail!.head, 1)
+            assert.isTrue(
+                nums.tail.flatMap((s) => s.head.map((h) => h === 1)).getOrElse(falseFactory)
+            )
         })
         it('3-е значение - 2', () => {
-            assert.equal(nums.tail!.tail!.head, 2)
+            assert.isTrue(
+                nums.tail
+                    .flatMap((t1) => t1.tail.flatMap((t2) => t2.head.map((h) => h === 2)))
+                    .getOrElse(falseFactory)
+            )
         })
         it('4-е значение - 3', () => {
-            assert.equal(nums.tail!.tail!.tail!.head, 3)
+            assert.isTrue(
+                nums.tail
+                    .flatMap((t1) =>
+                        t1.tail.flatMap((t2) =>
+                            t2.tail.flatMap((t3) => t3.head.map((h) => h === 3))
+                        )
+                    )
+                    .getOrElse(falseFactory)
+            )
         })
     })
 
@@ -91,16 +108,30 @@ describe('Тест класса Stream', () => {
         const chars = Stream.iterate('a', (head) => String.fromCharCode(head.charCodeAt(0) + 1))
 
         it('Начальное значение - "a"', () => {
-            assert.equal(chars.head, 'a')
+            assert.isTrue(chars.head.map((a) => a === 'a').getOrElse(falseFactory))
         })
         it('2-е значение - "b"', () => {
-            assert.equal(chars.tail!.head, 'b')
+            assert.isTrue(
+                chars.tail.flatMap((t1) => t1.head.map((b) => b === 'b')).getOrElse(falseFactory)
+            )
         })
         it('3-е значение - "c"', () => {
-            assert.equal(chars.tail!.tail!.head, 'c')
+            assert.isTrue(
+                chars.tail
+                    .flatMap((t1) => t1.tail.flatMap((t2) => t2.head.map((c) => c === 'c')))
+                    .getOrElse(falseFactory)
+            )
         })
         it('4-е значение - "d"', () => {
-            assert.equal(chars.tail!.tail!.tail!.head, 'd')
+            assert.isTrue(
+                chars.tail
+                    .flatMap((t1) =>
+                        t1.tail.flatMap((t2) =>
+                            t2.tail.flatMap((t3) => t3.head.map((d) => d === 'd'))
+                        )
+                    )
+                    .getOrElse(falseFactory)
+            )
         })
     })
 
@@ -111,16 +142,30 @@ describe('Тест класса Stream', () => {
             assert.instanceOf(one, Stream.Cons)
         })
         it('Начальное значение - 0', () => {
-            assert.equal(one.head, 0)
+            assert.isTrue(one.head.map((h) => h === 0).getOrElse(falseFactory))
         })
         it('2-е значение - 0', () => {
-            assert.equal(one.tail!.head, 0)
+            assert.isTrue(
+                one.tail.flatMap((s) => s.head.map((h) => h === 0)).getOrElse(falseFactory)
+            )
         })
         it('3-е значение - 0', () => {
-            assert.equal(one.tail!.tail!.head, 0)
+            assert.isTrue(
+                one.tail
+                    .flatMap((t1) => t1.tail.flatMap((t2) => t2.head.map((h) => h === 0)))
+                    .getOrElse(falseFactory)
+            )
         })
         it('4-е значение - 0', () => {
-            assert.equal(one.tail!.tail!.tail!.head, 0)
+            assert.isTrue(
+                one.tail
+                    .flatMap((t1) =>
+                        t1.tail.flatMap((t2) =>
+                            t2.tail.flatMap((t3) => t3.head.map((h) => h === 0))
+                        )
+                    )
+                    .getOrElse(falseFactory)
+            )
         })
     })
 
@@ -275,14 +320,17 @@ describe('Тест класса Stream', () => {
     })
 
     describe('Тест метода find', () => {
+        const nan: Factory<typeof NaN> = () => NaN
+
         it('Экземпляр - пустой поток', () => {
-            assert.isNull(Stream.empty<number>().find(isEven))
+            assert.isNaN(Stream.empty<number>().find(isEven).getOrElse(nan))
         })
         it('Экземпляр - поток элементов', () => {
             assert.equal(
                 Stream.from(-500)
                     .takeAtMost(1000)
-                    .find((n) => isEven(n) && n > 0),
+                    .find((n) => isEven(n) && n > 0)
+                    .getOrElse(nan),
                 2
             )
         })

@@ -1,6 +1,7 @@
 import { singleton } from 'src/utils/decorators'
 import Lazy, { lazy } from '../lazy/Lazy'
 import List from '../list/List'
+import Option from '../option/Option'
 import Pair, { pair } from '../pair/Pair'
 
 abstract class Stream<T> {
@@ -98,7 +99,7 @@ abstract class Stream<T> {
         )
     }
 
-    find(p: Predicate<T>): Nullable<T> {
+    find(p: Predicate<T>): Option<T> {
         return this.filter(p).head
     }
 
@@ -142,12 +143,8 @@ abstract class Stream<T> {
         )
     }
 
-    toList(): List<T> {
-        return Stream.toList(this, List.new())
-    }
-
-    abstract get head(): Nullable<T>
-    abstract get tail(): Nullable<Stream<T>>
+    abstract get head(): Option<T>
+    abstract get tail(): Option<Stream<T>>
     abstract get isEmpty(): boolean
 
     /**
@@ -190,35 +187,11 @@ abstract class Stream<T> {
      * @param p - Функция-предикат.
      */
     abstract takeWhile(p: Predicate<T>): Stream<T>
+
+    abstract toList(): List<T>
 }
 
 namespace Stream {
-    const dropAtMost = <T>(stream: Stream<T>, num: number): Stream<T> => {
-        return stream.isNotEmpty() && num > 0 ? dropAtMost(stream.tail, num - 1) : stream
-    }
-
-    const dropWhile = <T>(stream: Stream<T>, p: Predicate<T>): Stream<T> => {
-        return stream.isNotEmpty() && p(stream.head) ? dropWhile(stream.tail, p) : stream
-    }
-
-    const exists = <T>(stream: Stream<T>, p: Predicate<T>): boolean => {
-        return stream.isNotEmpty() ? p(stream.head) || exists(stream.tail, p) : false
-    }
-
-    const foldRight = <T, U>(
-        stream: Stream<T>,
-        acc: Lazy<U>,
-        f: (head: T) => (acc: Lazy<U>) => U
-    ): U => {
-        return stream.isNotEmpty()
-            ? f(stream.head)(lazy(() => foldRight(stream.tail, acc, f)))
-            : acc.value
-    }
-
-    export const toList = <T>(stream: Stream<T>, list: List<T>): List<T> => {
-        return stream.isNotEmpty() ? toList(stream.tail, list.cons(stream.head)) : list.reverse()
-    }
-
     export class Cons<T> extends Stream<T> {
         readonly #head: Lazy<T>
         readonly #tail: Lazy<Stream<T>>
@@ -229,12 +202,12 @@ namespace Stream {
             this.#tail = tail
         }
 
-        get head(): T {
-            return this.#head.value
+        get head(): Option<T> {
+            return Option.new(this.#head.value)
         }
 
-        get tail(): Stream<T> {
-            return this.#tail.value
+        get tail(): Option<Stream<T>> {
+            return Option.new(this.#tail.value)
         }
 
         get isEmpty(): boolean {
@@ -242,37 +215,75 @@ namespace Stream {
         }
 
         dropAtMost(num: number): Stream<T> {
-            return dropAtMost(this, num)
+            return Cons.#dropAtMost(this, num)
         }
 
         dropWhile(p: Predicate<T>): Stream<T> {
-            return dropWhile(this, p)
+            return Cons.#dropWhile(this, p)
         }
 
         exists(p: Predicate<T>): boolean {
-            return exists(this, p)
+            return Cons.#exists(this, p)
         }
 
         foldRight<U>(identity: Lazy<U>, f: (head: T) => (acc: Lazy<U>) => U): U {
-            return foldRight(this, identity, f)
+            return Cons.#foldRight(this, identity, f)
         }
 
         takeAtMost(num: number): Stream<T> {
             return num > 0
                 ? new Cons(
                       this.#head,
-                      lazy(() => this.tail.takeAtMost(num - 1))
+                      lazy(() => this.#tail.value.takeAtMost(num - 1))
                   )
                 : Empty.instance()
         }
 
         takeWhile(p: Predicate<T>): Stream<T> {
-            return p(this.head)
+            return p(this.#head.value)
                 ? new Cons(
                       this.#head,
-                      lazy(() => this.tail.takeWhile(p))
+                      lazy(() => this.#tail.value.takeWhile(p))
                   )
                 : Empty.instance()
+        }
+
+        toList(): List<T> {
+            return Cons.#toList(this)
+        }
+
+        static #dropAtMost<T>(stream: Stream<T>, num: number): Stream<T> {
+            return stream.isNotEmpty() && num > 0
+                ? Cons.#dropAtMost(stream.#tail.value, num - 1)
+                : stream
+        }
+
+        static #dropWhile<T>(stream: Stream<T>, p: Predicate<T>): Stream<T> {
+            return stream.isNotEmpty() && p(stream.#head.value)
+                ? Cons.#dropWhile(stream.#tail.value, p)
+                : stream
+        }
+
+        static #exists<T>(stream: Stream<T>, p: Predicate<T>): boolean {
+            return stream.isNotEmpty()
+                ? p(stream.#head.value) || Cons.#exists(stream.#tail.value, p)
+                : false
+        }
+
+        static #foldRight<T, U>(
+            stream: Stream<T>,
+            acc: Lazy<U>,
+            f: (head: T) => (acc: Lazy<U>) => U
+        ): U {
+            return stream.isNotEmpty()
+                ? f(stream.#head.value)(lazy(() => Cons.#foldRight(stream.#tail.value, acc, f)))
+                : acc.value
+        }
+
+        static #toList<T>(stream: Stream<T>, list: List<T> = List.new()): List<T> {
+            return stream.isNotEmpty()
+                ? Cons.#toList(stream.#tail.value, list.cons(stream.#head.value))
+                : list.reverse()
         }
     }
 
@@ -280,12 +291,12 @@ namespace Stream {
     export class Empty extends Stream<never> {
         static instance: () => Empty
 
-        get head(): null {
-            return null
+        get head(): Option<never> {
+            return Option.new()
         }
 
-        get tail(): null {
-            return null
+        get tail(): Option<never> {
+            return Option.new()
         }
 
         get isEmpty(): boolean {
@@ -301,7 +312,7 @@ namespace Stream {
         }
 
         exists(p: Predicate<never>): boolean {
-            return exists(this, p)
+            return false
         }
 
         foldRight<U>(identity: Lazy<U>, f: (head: never) => (acc: Lazy<U>) => U): U {
@@ -314,6 +325,10 @@ namespace Stream {
 
         takeWhile(p: Predicate<never>): Stream<never> {
             return this
+        }
+
+        toList(): List<never> {
+            return List.new()
         }
     }
 }
