@@ -61,6 +61,15 @@ describe('Тест класса Stream', () => {
         })
     })
 
+    describe('Тест конструктора Stream.fibs', () => {
+        it('Последовательность 10 чисел Фибоначчи', () => {
+            assert.equal(
+                Stream.fibs().takeAtMost(10).toList().toString(),
+                List.new(1, 1, 2, 3, 5, 8, 13, 21, 34, 55).toString()
+            )
+        })
+    })
+
     describe('Тест конструктора Stream.from', () => {
         const nums = Stream.from(0)
 

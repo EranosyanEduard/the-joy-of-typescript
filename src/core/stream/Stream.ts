@@ -11,11 +11,18 @@ abstract class Stream<T> {
     }
 
     /**
+     * Создать бесконечный поток чисел Фибоначчи.
+     */
+    static fibs(): Stream<number> {
+        return Stream.unfold<number, Pair<number>>([1, 1], ([p, n]) => [p, [n, p + n]])
+    }
+
+    /**
      * Создать бесконечный поток элементов типа **number**.
      * @param start - Начальное значение.
      */
     static from(start: number): Stream<number> {
-        return Stream.iterate(start, (n) => n + 1)
+        return Stream.unfold(start, (n) => [n, n + 1])
     }
 
     /**
@@ -39,6 +46,22 @@ abstract class Stream<T> {
             lazy(f),
             lazy(() => Stream.repeat(f))
         )
+    }
+
+    /**
+     * Создать бесконечный поток элементов типа **T**.
+     * @see Методы: Stream.fibs, Stream.from.
+     * @param seed - Начальное значение.
+     * @param f - Фабрика значений.
+     */
+    static unfold<T, U>(seed: U, f: (seed: U) => Nullable<Pair<T, U>>): Stream<T> {
+        const pair = f(seed)
+        return pair === null || pair === undefined
+            ? Stream.empty()
+            : Stream.cons(
+                  lazy(() => pair[0]),
+                  lazy(() => Stream.unfold(pair[1], f))
+              )
     }
 
     /**
