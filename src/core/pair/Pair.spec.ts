@@ -16,6 +16,21 @@ describe('Тест класса Pair', () => {
         })
     })
 
+    describe('Тест метода flatMap', () => {
+        const fooA = new Pair(0, 'foo')
+        const fooB = fooA.flatMap(([first, second]) => new Pair(first + 1, second.toUpperCase()))
+
+        it('Новый экземпляр класса Pair', () => {
+            assert.notEqual(fooA, fooB)
+        })
+        it('Свойство first - 1', () => {
+            assert.equal(fooB.first, 1)
+        })
+        it('Свойство second - "FOO"', () => {
+            assert.equal(fooB.second, 'FOO')
+        })
+    })
+
     describe('Тест метода map', () => {
         const fooA = new Pair(0, 'foo')
         const fooB = fooA.map(([first, second]) => [first + 1, second.toUpperCase()])
