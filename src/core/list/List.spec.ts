@@ -1,7 +1,11 @@
 import { assert } from 'chai'
-import List from './List'
+import Option from '../option/Option'
+import Pair, { pair } from '../pair/Pair'
+import List, { flattenOption, product, sequence, unzip, zipWith } from './List'
 
 describe('Тест класса List', () => {
+    const charCode = (char: string): number => char.charCodeAt(0) - 'a'.charCodeAt(0)
+
     const EMPTY_LIST = List.new<string>()
     const CHAR_LIST = List.new('a', 'b', 'c')
 
@@ -47,6 +51,30 @@ describe('Тест класса List', () => {
         })
         it('Список элементов', () => {
             assert.equal(CHAR_LIST.size, 3)
+        })
+    })
+
+    describe('Тест свойства доступа headSafe', () => {
+        it('Пустой список', () => {
+            assert.isTrue(EMPTY_LIST.headSafe.isEmpty)
+        })
+        it('Список элементов', () => {
+            assert.equal(
+                CHAR_LIST.headSafe.getOrElse(() => ''),
+                'a'
+            )
+        })
+    })
+
+    describe('Тест свойства доступа lastSafe', () => {
+        it('Пустой список', () => {
+            assert.isTrue(EMPTY_LIST.lastSafe.isEmpty)
+        })
+        it('Список элементов', () => {
+            assert.equal(
+                CHAR_LIST.lastSafe.getOrElse(() => ''),
+                'c'
+            )
         })
     })
 
@@ -228,6 +256,113 @@ describe('Тест класса List', () => {
         })
         it('Список элементов', () => {
             assert.equal(CHAR_LIST.reverse().toString(), 'c, b, a')
+        })
+    })
+
+    describe('Тест утилиты flattenOption', () => {
+        it('Результат: экземпляр класса List', () => {
+            assert.instanceOf(flattenOption(List.new<Option<any>>()), List)
+        })
+        it('Результат: пустой список', () => {
+            assert.isTrue(flattenOption(CHAR_LIST.map(() => Option.new())).isEmpty)
+        })
+        it('Результат: список не-nullable значений', () => {
+            assert.equal(
+                flattenOption(
+                    CHAR_LIST.flatMap((it) => List.new(Option.new(), Option.new(it)))
+                ).toString(),
+                'a, b, c'
+            )
+        })
+    })
+
+    describe('Тест утилиты product', () => {
+        const f = (a: string) => (b: string) => `${a}${b}`
+
+        it('Результат: экземпляр класса List', () => {
+            assert.instanceOf(product(CHAR_LIST, CHAR_LIST, f), List)
+        })
+        it('Результат: пустой список', () => {
+            assert.isTrue(
+                product(CHAR_LIST, EMPTY_LIST, f).concat(product(EMPTY_LIST, CHAR_LIST, f)).isEmpty
+            )
+        })
+        it('Результат: список значений, представляющих комбинации значений обоих списков', () => {
+            assert.equal(
+                product(
+                    CHAR_LIST,
+                    CHAR_LIST.map((it) => it.toUpperCase()),
+                    f
+                ).toString(),
+                'aA, aB, aC, bA, bB, bC, cA, cB, cC'
+            )
+        })
+    })
+
+    describe('Тест утилиты sequence', () => {
+        it('Результат: экземпляр класса Option', () => {
+            assert.instanceOf(sequence(List.new<Option<any>>()), Option)
+        })
+        it('Результат: необязательное значение с пустым списком', () => {
+            assert.isTrue(sequence(CHAR_LIST.map(() => Option.new())).isEmpty)
+        })
+        it('Результат: необязательное значение со списком не-nullable значений', () => {
+            assert.equal(
+                sequence(CHAR_LIST.map((it) => Option.new(charCode(it))))
+                    .getOrElse(() => List.new())
+                    .toString(),
+                '0, 1, 2'
+            )
+        })
+    })
+
+    describe('Тест утилиты unzip', () => {
+        const PAIR_LIST = CHAR_LIST.map((it) => pair(charCode(it), it))
+
+        it('Результат: экземпляр класса Pair', () => {
+            assert.instanceOf(unzip(PAIR_LIST), Pair)
+        })
+        it('Результат: пустой список', () => {
+            assert.isTrue(
+                unzip(List.new<Pair<any, any>>()).map(([listA, listB]) => [listA === listB, null])
+                    .first
+            )
+        })
+        it('Результат: пара списков', () => {
+            assert.equal(
+                unzip(PAIR_LIST).map(([listA, listB]) => [
+                    listA
+                        .map((it) => it.toString())
+                        .concat(listB)
+                        .toString(),
+                    null
+                ]).first,
+                '0, 1, 2, a, b, c'
+            )
+        })
+    })
+
+    describe('Тест утилиты zipWith', () => {
+        const f =
+            (a: number) =>
+            (b: string): [number, string] =>
+                [a, b]
+
+        const CHAR_CODE_LIST = CHAR_LIST.map(charCode)
+
+        it('Результат: экземпляр класса List', () => {
+            assert.instanceOf(zipWith(CHAR_CODE_LIST, CHAR_LIST, f), List)
+        })
+        it('Результат: пустой список', () => {
+            assert.isTrue(zipWith(List.new<number>(), CHAR_LIST, f).isEmpty)
+        })
+        it('Результат: список кортежей', () => {
+            assert.equal(
+                zipWith(CHAR_CODE_LIST, CHAR_LIST, f)
+                    .map(([num, str]) => `${num}${str}`)
+                    .toString(),
+                '0a, 1b, 2c'
+            )
         })
     })
 })

@@ -1,8 +1,18 @@
 import { singleton } from 'src/utils/decorators'
+import Option, { map2 } from '../option/Option'
+import Pair, { pair } from '../pair/Pair'
 
 abstract class List<T> {
     static new<T>(...args: readonly T[]): List<T> {
         return args.reduceRight((acc, item) => acc.cons(item), List.Nil.instance() as List<T>)
+    }
+
+    get headSafe(): Option<T> {
+        return Option.new(this.head)
+    }
+
+    get lastSafe(): Option<T> {
+        return Option.new(this.reverse().head)
     }
 
     /**
@@ -150,4 +160,47 @@ namespace List {
     }
 }
 
+const flattenOption = <T>(list: List<Option<T>>): List<T> => {
+    return list.flatMap((it) => it.map((v) => List.new(v)).getOrElse(() => List.new()))
+}
+
+const product = <A, B, C>(listA: List<A>, listB: List<B>, f: (a: A) => (b: B) => C): List<C> => {
+    return listA.flatMap((a) => listB.map(f(a)))
+}
+
+const sequence = <T>(list: List<Option<T>>): Option<List<T>> => {
+    return traverse(list, (it) => it)
+}
+
+const traverse = <T, U>(list: List<T>, f: (item: T) => Option<U>): Option<List<U>> => {
+    return list.foldRight(
+        Option.new(List.new()),
+        (acc) => (it) => map2(f(it), acc, (item) => (l) => l.cons(item))
+    )
+}
+
+const unzip = <T, U>(list: List<Pair<T, U>>): Pair<List<T>, List<U>> => {
+    return list.foldRight(
+        pair(List.new(), List.new()),
+        (acc) => (it) =>
+            acc.flatMap(([listA, listB]) => it.map(([a, b]) => [listA.cons(a), listB.cons(b)]))
+    )
+}
+
+const zipWith2 = <A, B, C>(
+    listA: List<A>,
+    listB: List<B>,
+    listC: List<C>,
+    f: (a: A) => (b: B) => C
+): List<C> => {
+    return listA.isNotEmpty() && listB.isNotEmpty()
+        ? zipWith2(listA.tail, listB.tail, listC.cons(f(listA.head)(listB.head)), f)
+        : listC.reverse()
+}
+
+const zipWith = <A, B, C>(listA: List<A>, listB: List<B>, f: (a: A) => (b: B) => C): List<C> => {
+    return zipWith2(listA, listB, List.new(), f)
+}
+
 export default List
+export { flattenOption, product, sequence, traverse, unzip, zipWith }
