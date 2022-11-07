@@ -66,4 +66,9 @@ namespace Option {
     }
 }
 
+const map2 = <A, B, C>(a: Option<A>, b: Option<B>, f: (a: A) => (b: B) => C): Option<C> => {
+    return a.flatMap((itA) => b.map((itB) => f(itA)(itB)))
+}
+
 export default Option
+export { map2 }

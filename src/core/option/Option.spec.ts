@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import Option from './Option'
+import Option, { map2 } from './Option'
 
 describe('Тест класса Option', () => {
     const nan: Factory<typeof NaN> = () => NaN
@@ -94,6 +94,17 @@ describe('Тест класса Option', () => {
         })
         it('Значение присутствует', () => {
             assert.equal(Option.new<number>(0).orElse(minusOne).getOrElse(nan), 0)
+        })
+    })
+
+    describe('Тест утилиты map2', () => {
+        const opt = map2(Option.new(0), Option.new('a'), (n) => (s) => [n, s])
+
+        it('Результат: экземпляр класса Option', () => {
+            assert.instanceOf(opt, Option)
+        })
+        it('Результат: кортеж [0, "a"]', () => {
+            assert.isTrue(opt.map(([n, s]) => n === 0 && s === 'a').getOrElse(() => false))
         })
     })
 })
