@@ -70,12 +70,39 @@ abstract class List<T> {
         return List.#fold(identity, this, func)
     }
 
+    foldViaZero<U>(identity: U, func: (acc: U) => (item: T) => U, p: Predicate<U>): U {
+        return List.#foldViaZero(identity, this, func, p)
+    }
+
     foldRight<U>(identity: U, func: (acc: U) => (item: T) => U): U {
         return this.reverse().fold(identity, func)
     }
 
     forEach(func: (item: T) => void): void {
         this.fold(undefined, () => func)
+    }
+
+    getAt(index: number): Option<T> {
+        if (index < 0 || index >= this.size) {
+            return Option.new()
+        }
+
+        const go = (list: List.Cons<T>, idx: number): Option<T> => {
+            return index === idx ? Option.new(list.head) : go(list.tail as List.Cons<T>, idx + 1)
+        }
+
+        return go(this as List.Cons<T>, 0)
+    }
+
+    getAtViaFoldViaZero(index: number): Option<T> {
+        const startIdx = -1
+        const endIdx = index > -1 && index < this.size ? index : startIdx
+
+        return this.foldViaZero(
+            pair(-1, Option.new<T>()),
+            (acc) => (item) => acc.map(([idx]) => [idx + 1, Option.new(item)]),
+            (acc) => acc.first === endIdx
+        ).second
     }
 
     /**
@@ -100,6 +127,16 @@ abstract class List<T> {
         return this.fold(List.Nil.instance() as List<T>, (list) => (item) => list.cons(item))
     }
 
+    unzip<U1, U2>(f: (item: T) => Pair<U1, U2>): Pair<List<U1>, List<U2>> {
+        return this.foldRight(
+            pair(List.new(), List.new()),
+            (acc) => (it) =>
+                acc.flatMap(([listA, listB]) =>
+                    f(it).map(([a, b]) => [listA.cons(a), listB.cons(b)])
+                )
+        )
+    }
+
     abstract readonly head: T | undefined
     abstract readonly tail: List<T> | undefined
     abstract readonly isEmpty: boolean
@@ -116,6 +153,18 @@ abstract class List<T> {
     static #fold<T, U>(acc: U, list: List<T>, func: (acc: U) => (item: T) => U): U {
         if (list.isNotEmpty()) {
             return List.#fold(func(acc)(list.head), list.tail, func)
+        }
+        return acc
+    }
+
+    static #foldViaZero<T, U>(
+        acc: U,
+        list: List<T>,
+        func: (acc: U) => (item: T) => U,
+        p: Predicate<U>
+    ): U {
+        if (list.isNotEmpty() && !p(acc)) {
+            return List.#foldViaZero(func(acc)(list.head), list.tail, func, p)
         }
         return acc
     }

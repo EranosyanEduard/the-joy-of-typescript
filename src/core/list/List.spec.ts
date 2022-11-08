@@ -230,6 +230,78 @@ describe('Тест класса List', () => {
         })
     })
 
+    describe('Тест метода getAt', () => {
+        it('Результат: экземпляр класса Option', () => {
+            assert.instanceOf(CHAR_LIST.getAt(1), Option)
+        })
+        it('Отрицательный индекс', () => {
+            assert.isTrue(CHAR_LIST.getAt(-1).isEmpty)
+        })
+        it('Индекс 0', () => {
+            assert.isTrue(
+                CHAR_LIST.getAt(0)
+                    .map((a) => a === 'a')
+                    .getOrElse(() => false)
+            )
+        })
+        it('Индекс элемента, расположенного между первым и последними элементами', () => {
+            assert.isTrue(
+                CHAR_LIST.getAt(1)
+                    .map((b) => b === 'b')
+                    .getOrElse(() => false)
+            )
+        })
+        it('Последний индекс', () => {
+            assert.isTrue(
+                CHAR_LIST.getAt(2)
+                    .map((c) => c === 'c')
+                    .getOrElse(() => false)
+            )
+        })
+        it('Индекс, равный размеру списка', () => {
+            assert.isTrue(CHAR_LIST.getAt(CHAR_LIST.size).isEmpty)
+        })
+        it('Индекс, превышающий размер списка', () => {
+            assert.isTrue(CHAR_LIST.getAt(CHAR_LIST.size + 1).isEmpty)
+        })
+    })
+
+    describe('Тест метода getAtViaFoldViaZero', () => {
+        it('Результат: экземпляр класса Option', () => {
+            assert.instanceOf(CHAR_LIST.getAtViaFoldViaZero(1), Option)
+        })
+        it('Отрицательный индекс', () => {
+            assert.isTrue(CHAR_LIST.getAtViaFoldViaZero(-1).isEmpty)
+        })
+        it('Индекс 0', () => {
+            assert.isTrue(
+                CHAR_LIST.getAtViaFoldViaZero(0)
+                    .map((a) => a === 'a')
+                    .getOrElse(() => false)
+            )
+        })
+        it('Индекс элемента, расположенного между первым и последними элементами', () => {
+            assert.isTrue(
+                CHAR_LIST.getAtViaFoldViaZero(1)
+                    .map((b) => b === 'b')
+                    .getOrElse(() => false)
+            )
+        })
+        it('Последний индекс', () => {
+            assert.isTrue(
+                CHAR_LIST.getAtViaFoldViaZero(2)
+                    .map((c) => c === 'c')
+                    .getOrElse(() => false)
+            )
+        })
+        it('Индекс, равный размеру списка', () => {
+            assert.isTrue(CHAR_LIST.getAtViaFoldViaZero(CHAR_LIST.size).isEmpty)
+        })
+        it('Индекс, превышающий размер списка', () => {
+            assert.isTrue(CHAR_LIST.getAtViaFoldViaZero(CHAR_LIST.size + 1).isEmpty)
+        })
+    })
+
     describe('Тест метода init', () => {
         it('Пустой список', () => {
             assert.equal(EMPTY_LIST.init(), EMPTY_LIST)
@@ -256,6 +328,32 @@ describe('Тест класса List', () => {
         })
         it('Список элементов', () => {
             assert.equal(CHAR_LIST.reverse().toString(), 'c, b, a')
+        })
+    })
+
+    describe('Тест метода unzip', () => {
+        const f = (it: string): Pair<number, string> => pair(charCode(it), it)
+
+        it('Результат: экземпляр класса Pair', () => {
+            assert.instanceOf(CHAR_LIST.unzip(f), Pair)
+        })
+        it('Результат: пара пустых список', () => {
+            assert.isTrue(
+                EMPTY_LIST.unzip(f).map(([listA, listB]) => [listA.isEmpty === listB.isEmpty, null])
+                    .first
+            )
+        })
+        it('Результат: пара списков значений', () => {
+            assert.equal(
+                CHAR_LIST.unzip(f).map(([listA, listB]) => [
+                    listA
+                        .map((it) => it.toString())
+                        .concat(listB)
+                        .toString(),
+                    null
+                ]).first,
+                '0, 1, 2, a, b, c'
+            )
         })
     })
 
@@ -322,13 +420,13 @@ describe('Тест класса List', () => {
         it('Результат: экземпляр класса Pair', () => {
             assert.instanceOf(unzip(PAIR_LIST), Pair)
         })
-        it('Результат: пустой список', () => {
+        it('Результат: пара пустых список', () => {
             assert.isTrue(
                 unzip(List.new<Pair<any, any>>()).map(([listA, listB]) => [listA === listB, null])
                     .first
             )
         })
-        it('Результат: пара списков', () => {
+        it('Результат: пара списков значений', () => {
             assert.equal(
                 unzip(PAIR_LIST).map(([listA, listB]) => [
                     listA
